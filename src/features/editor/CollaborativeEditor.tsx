@@ -9,15 +9,18 @@ import { PeerManager } from '../../core/networking/PeerManager';
 
 import { WorkspaceChat } from '../chat/WorkspaceChat';
 
+import type * as awarenessProtocol from 'y-protocols/awareness';
+
 interface CollaborativeEditorProps {
   documentId: string;
   workspaceId: string;
   deviceId: string;
   activeWorkspaceKey: CryptoKey | null;
   onPeersChange: (count: number) => void;
+  onAwarenessReady: (awareness: awarenessProtocol.Awareness | null) => void;
 }
 
-export function CollaborativeEditor({ documentId, workspaceId, deviceId, activeWorkspaceKey, onPeersChange }: CollaborativeEditorProps) {
+export function CollaborativeEditor({ documentId, workspaceId, deviceId, activeWorkspaceKey, onPeersChange, onAwarenessReady }: CollaborativeEditorProps) {
   const [isLoaded, setIsLoaded] = useState(false);
   const providerRef = useRef<IndexeddbPersistence | null>(null);
   const ydocRef = useRef<Y.Doc>(new Y.Doc());
@@ -57,6 +60,7 @@ export function CollaborativeEditor({ documentId, workspaceId, deviceId, activeW
       });
 
       peerManagerRef.current = pm;
+      onAwarenessReady(pm.awareness);
     });
 
     return () => {
@@ -66,8 +70,9 @@ export function CollaborativeEditor({ documentId, workspaceId, deviceId, activeW
       provider.destroy();
       ydocRef.current.destroy();
       onPeersChange(0);
+      onAwarenessReady(null);
     };
-  }, [documentId, workspaceId, deviceId, onPeersChange, cursorColor]);
+  }, [documentId, workspaceId, deviceId, onPeersChange, onAwarenessReady, cursorColor]);
 
   const editor = useEditor({
     extensions: [

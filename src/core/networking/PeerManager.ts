@@ -4,6 +4,8 @@ import * as Y from 'yjs';
 import * as awarenessProtocol from 'y-protocols/awareness';
 import { generateStateVector } from '../sync/syncProtocol';
 import { encryptPayload, decryptPayload } from '../security/crypto';
+import { db } from '../storage/db';
+import { v4 as uuidv4 } from 'uuid';
 
 export class PeerManager {
   private deviceId: string;
@@ -112,8 +114,12 @@ export class PeerManager {
 
     pc.onconnectionstatechange = () => {
       if (pc.connectionState === 'connected') {
+        // Log join event
+        db.activity.put({ id: uuidv4(), workspaceId: this.workspaceId, peerId: peerId.split('-')[0], event: 'join', timestamp: Date.now() }).catch(() => {});
         if (this.onPeerConnect) this.onPeerConnect(peerId);
       } else if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
+        // Log leave event
+        db.activity.put({ id: uuidv4(), workspaceId: this.workspaceId, peerId: peerId.split('-')[0], event: 'leave', timestamp: Date.now() }).catch(() => {});
         this.cleanupPeer(peerId);
         if (this.onPeerDisconnect) this.onPeerDisconnect(peerId);
       }

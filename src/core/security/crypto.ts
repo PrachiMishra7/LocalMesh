@@ -70,8 +70,9 @@ export async function decryptPayload(key: CryptoKey, encryptedPayload: Uint8Arra
     throw new Error('Invalid encrypted payload (too short to contain IV)');
   }
 
-  const iv = encryptedPayload.subarray(0, 12);
-  const cipherText = encryptedPayload.subarray(12);
+  // Copy into fresh Uint8Arrays backed by clean ArrayBuffers so SubtleCrypto accepts them
+  const iv = new Uint8Array(encryptedPayload.subarray(0, 12));
+  const cipherText = new Uint8Array(encryptedPayload.subarray(12));
 
   const plainBuffer = await window.crypto.subtle.decrypt(
     {
@@ -79,7 +80,7 @@ export async function decryptPayload(key: CryptoKey, encryptedPayload: Uint8Arra
       iv: iv
     },
     key,
-    cipherText.buffer as ArrayBuffer
+    cipherText
   );
 
   return new Uint8Array(plainBuffer);

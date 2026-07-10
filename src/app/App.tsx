@@ -1,7 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
+import * as awarenessProtocol from 'y-protocols/awareness';
 import { getOrCreateDeviceId } from '../core/identity/identityService';
 import { Sidebar } from '../components/Sidebar';
 import { EditorPlaceholder, SyncDashboard } from '../components/LayoutComponents';
+import { AdminPanel } from '../components/AdminPanel';
 import './App.css'; // Add basic resets
 
 export default function App() {
@@ -9,7 +11,10 @@ export default function App() {
   const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null);
   const [activeDocumentId, setActiveDocumentId] = useState<string | null>(null);
   const [activeWorkspaceKey, setActiveWorkspaceKey] = useState<CryptoKey | null>(null);
+  const [activeWorkspaceSalt, setActiveWorkspaceSalt] = useState<string | null>(null);
   const [activePeers, setActivePeers] = useState<number>(0);
+  const [awareness, setAwareness] = useState<awarenessProtocol.Awareness | null>(null);
+  const [showAdmin, setShowAdmin] = useState(false);
 
   useEffect(() => {
     const init = async () => {
@@ -27,6 +32,8 @@ export default function App() {
     setActiveWorkspaceId(wsId);
     setActiveDocumentId(null);
     setActiveWorkspaceKey(null);
+    setActiveWorkspaceSalt(salt || null);
+    setAwareness(null);
 
     if (hasPassword && salt) {
       const pwd = prompt('This Workspace is encrypted. Enter the Workspace Password to unlock it:');
@@ -59,8 +66,28 @@ export default function App() {
         activeWorkspaceId={activeWorkspaceId}
         activeWorkspaceKey={activeWorkspaceKey}
         onPeersChange={setActivePeers}
+        onAwarenessReady={setAwareness}
       />
-      <SyncDashboard deviceId={deviceId} activePeers={activePeers} isEncrypted={!!activeWorkspaceKey} />
+      <SyncDashboard 
+        deviceId={deviceId} 
+        activePeers={activePeers} 
+        isEncrypted={!!activeWorkspaceKey}
+        awareness={awareness}
+        activeWorkspaceId={activeWorkspaceId}
+        activeWorkspaceSalt={activeWorkspaceSalt}
+        onOpenAdmin={() => setShowAdmin(true)}
+      />
+      {showAdmin && activeWorkspaceId && (
+        <AdminPanel
+          workspaceId={activeWorkspaceId}
+          deviceId={deviceId}
+          awareness={awareness}
+          onClose={() => setShowAdmin(false)}
+          onWorkspaceDeleted={() => { setShowAdmin(false); setActiveWorkspaceId(null); setActiveDocumentId(null); }}
+          onWorkspaceRenamed={() => {}}
+          onKeyRotated={(newSalt) => { setActiveWorkspaceSalt(newSalt); }}
+        />
+      )}
     </div>
   );
 }
