@@ -1,7 +1,9 @@
 import { SignallingChannel } from './SignallingChannel';
 import type { SignallingMessage } from '../protocol/messages';
 import * as Y from 'yjs';
+import * as awarenessProtocol from 'y-protocols/awareness';
 import { generateStateVector } from '../sync/syncProtocol';
+import { encryptPayload, decryptPayload } from '../security/crypto';
 
 export class PeerManager {
   private deviceId: string;
@@ -9,26 +11,36 @@ export class PeerManager {
   private signalling: SignallingChannel;
   private peerConnections: Map<string, RTCPeerConnection> = new Map();
   private dataChannels: Map<string, RTCDataChannel> = new Map();
+  private ydoc: Y.Doc;
+  private cryptoKey: CryptoKey | null;
+  public awareness: awarenessProtocol.Awareness;
   
   // Callbacks for UI/Yjs updates
   public onPeerConnect?: (peerId: string) => void;
   public onPeerDisconnect?: (peerId: string) => void;
   public onSyncUpdate?: (update: Uint8Array) => void;
 
-  private ydoc: Y.Doc;
-
-  constructor(deviceId: string, workspaceId: string, ydoc: Y.Doc) {
+  constructor(deviceId: string, workspaceId: string, ydoc: Y.Doc, cryptoKey: CryptoKey | null = null) {
     this.deviceId = deviceId;
     this.workspaceId = workspaceId;
     this.ydoc = ydoc;
+    this.cryptoKey = cryptoKey;
+    this.awareness = new awarenessProtocol.Awareness(ydoc);
 
-    this.signalling = new SignallingChannel(workspaceId, deviceId);
+    // Whenever local awareness changes (cursor moves), broadcast it!
+    this.awareness.on('update', ({ added, updated, removed }: any) => {
+      const changedClients = added.concat(updated, removed);
+      const update = awarenessProtocol.encodeAwarenessUpdate(this.awareness, changedClients);
+      this.broadcastAwarenessUpdate(update);
+    });
+
+    this.signalling = new SignallingChannel(deviceId);
     this.signalling.setOnMessage(this.handleSignallingMessage.bind(this));
 
     // Listen to local Yjs changes and broadcast them
     this.ydoc.on('update', (update: Uint8Array, origin: any) => {
       if (origin !== this) { // Don't broadcast updates we just received from a peer
-        this.broadcastUpdate(update);
+        this.broadcastSyncUpdate(update);
       }
     });
 
@@ -178,41 +190,95 @@ export class PeerManager {
     
     channel.onopen = () => {
       this.dataChannels.set(peerId, channel);
-      // Phase 7: Sync Protocol Kickoff
       // As soon as we connect, we send our State Vector to ask what we missed
       const sv = generateStateVector(this.ydoc);
-      this.sendToPeer(peerId, sv);
+      this.sendSyncUpdate(peerId, sv);
+      
+      // Also send our local awareness state
+      if (this.awareness) {
+        const awarenessUpdate = awarenessProtocol.encodeAwarenessUpdate(this.awareness, [this.ydoc.clientID]);
+        this.sendAwarenessUpdate(peerId, awarenessUpdate);
+      }
     };
 
     channel.onclose = () => {
       this.dataChannels.delete(peerId);
     };
 
-    channel.onmessage = (event) => {
-      // We assume all incoming messages are Yjs binary updates for now
-      const update = new Uint8Array(event.data as ArrayBuffer);
+    channel.onmessage = async (event) => {
+      let data = new Uint8Array(event.data as ArrayBuffer);
       
-      // We pass `this` as the origin so our own Y.Doc 'update' listener knows to ignore it
-      Y.applyUpdate(this.ydoc, update, this); 
+      if (this.cryptoKey) {
+        try {
+          data = (await decryptPayload(this.cryptoKey, data)) as any;
+        } catch (e) {
+          console.error('Failed to decrypt incoming WebRTC payload:', e);
+          return; // Drop message if decryption fails
+        }
+      }
+
+      const messageType = data[0];
+      const payload = data.subarray(1);
       
-      if (this.onSyncUpdate) {
-        this.onSyncUpdate(update);
+      if (messageType === 0) {
+        // SYNC Message
+        Y.applyUpdate(this.ydoc, payload, this); 
+        if (this.onSyncUpdate) this.onSyncUpdate(payload);
+      } else if (messageType === 1 && this.awareness) {
+        // AWARENESS Message
+        awarenessProtocol.applyAwarenessUpdate(this.awareness, payload, this);
       }
     };
   }
 
-  public broadcastUpdate(update: Uint8Array) {
+  public broadcastSyncUpdate(update: Uint8Array) {
+    const msg = new Uint8Array(update.length + 1);
+    msg[0] = 0; // 0 = SYNC
+    msg.set(update, 1);
+    this.broadcastToAll(msg);
+  }
+
+  public broadcastAwarenessUpdate(update: Uint8Array) {
+    const msg = new Uint8Array(update.length + 1);
+    msg[0] = 1; // 1 = AWARENESS
+    msg.set(update, 1);
+    this.broadcastToAll(msg);
+  }
+
+  private async broadcastToAll(msg: Uint8Array) {
+    let payloadToSend = msg;
+    if (this.cryptoKey) {
+      payloadToSend = await encryptPayload(this.cryptoKey, msg);
+    }
     this.dataChannels.forEach((channel) => {
       if (channel.readyState === 'open') {
-        channel.send(update as any);
+        channel.send(payloadToSend as any);
       }
     });
   }
 
-  private sendToPeer(peerId: string, data: Uint8Array) {
+  private sendSyncUpdate(peerId: string, data: Uint8Array) {
+    const msg = new Uint8Array(data.length + 1);
+    msg[0] = 0;
+    msg.set(data, 1);
+    this.sendRawToPeer(peerId, msg);
+  }
+
+  private sendAwarenessUpdate(peerId: string, data: Uint8Array) {
+    const msg = new Uint8Array(data.length + 1);
+    msg[0] = 1;
+    msg.set(data, 1);
+    this.sendRawToPeer(peerId, msg);
+  }
+
+  private async sendRawToPeer(peerId: string, data: Uint8Array) {
     const channel = this.dataChannels.get(peerId);
     if (channel && channel.readyState === 'open') {
-      channel.send(data as any);
+      let payloadToSend = data;
+      if (this.cryptoKey) {
+        payloadToSend = await encryptPayload(this.cryptoKey, data);
+      }
+      channel.send(payloadToSend as any);
     }
   }
 

@@ -7,7 +7,7 @@ import React from 'react';
 interface SidebarProps {
   deviceId: string;
   activeWorkspaceId: string | null;
-  setActiveWorkspaceId: (id: string) => void;
+  setActiveWorkspaceId: (id: string, hasPassword?: boolean, salt?: string) => void;
   activeDocumentId: string | null;
   setActiveDocumentId: (id: string) => void;
 }
@@ -34,14 +34,24 @@ export function Sidebar({
     const name = prompt('Enter Workspace Name (e.g., Engineering Team):');
     if (!name) return;
     
+    const password = prompt('Enter an optional Workspace Password to enable End-to-End Encryption (leave blank for none):');
+    
     const id = uuidv4();
-    await db.workspaces.put({
+    const ws: any = {
       id,
       name,
-      createdBy: deviceId,
-      createdAt: Date.now()
-    });
-    setActiveWorkspaceId(id);
+      createdAt: Date.now(),
+      createdBy: 'local'
+    };
+
+    if (password && password.trim().length > 0) {
+      ws.hasPassword = true;
+      ws.passwordSalt = uuidv4(); // Generate a random salt for PBKDF2
+      // We don't save the password! The user must type it to generate the key.
+    }
+
+    await db.workspaces.put(ws);
+    setActiveWorkspaceId(id, ws.hasPassword, ws.passwordSalt);
   };
 
   const handleCreateDocument = async () => {
@@ -62,7 +72,7 @@ export function Sidebar({
 
   return (
     <div style={{ 
-      width: '260px', 
+      width: '280px', 
       backgroundColor: 'var(--bg-sidebar)', 
       borderRight: '1px solid var(--border-subtle)',
       display: 'flex', 
@@ -70,32 +80,12 @@ export function Sidebar({
       height: '100vh', 
       boxSizing: 'border-box' 
     }}>
-      {/* Brand Header */}
-      <div style={{ 
-        padding: '1.5rem', 
-        display: 'flex', 
-        alignItems: 'center', 
-        gap: '0.75rem', 
-        borderBottom: '1px solid var(--border-subtle)',
-        marginBottom: '1rem'
-      }}>
-        <div style={{ 
-          background: 'var(--accent-primary)', 
-          padding: '0.4rem', 
-          borderRadius: '8px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          boxShadow: 'var(--shadow-glow)'
-        }}>
-          <Hash size={18} color="#fff" strokeWidth={2.5} />
-        </div>
-        <h2 style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.02em' }}>
-          LocalMesh
-        </h2>
+      <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border-subtle)' }}>
+        <h1 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>LocalMesh</h1>
+        <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: '0.25rem 0 0 0' }}>Peer-to-Peer Collab</p>
       </div>
 
-      <div style={{ padding: '0 1rem', flex: 1, overflowY: 'auto' }}>
+      <div style={{ padding: '1.5rem 1rem', flex: 1, overflowY: 'auto' }}>
         {/* Workspaces Section */}
         <div style={{ marginBottom: '2rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', padding: '0 0.5rem' }}>
@@ -114,8 +104,8 @@ export function Sidebar({
             {workspaces?.map(ws => (
               <li 
                 key={ws.id} 
-                onClick={() => { setActiveWorkspaceId(ws.id); setActiveDocumentId(''); }}
-                style={{ 
+                onClick={() => { setActiveWorkspaceId(ws.id, ws.hasPassword, ws.passwordSalt); setActiveDocumentId(''); }}
+                style={{
                   padding: '0.5rem 0.75rem', 
                   cursor: 'pointer', 
                   borderRadius: '6px',

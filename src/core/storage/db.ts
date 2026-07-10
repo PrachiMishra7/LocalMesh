@@ -11,6 +11,8 @@ export interface Workspace {
   name: string;
   createdBy: string;
   createdAt: number;
+  hasPassword?: boolean;
+  passwordSalt?: string;
 }
 
 export interface DocumentMeta {

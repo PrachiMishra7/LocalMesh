@@ -13,14 +13,17 @@ interface CollaborativeEditorProps {
   documentId: string;
   workspaceId: string;
   deviceId: string;
+  activeWorkspaceKey: CryptoKey | null;
   onPeersChange: (count: number) => void;
 }
 
-export function CollaborativeEditor({ documentId, workspaceId, deviceId, onPeersChange }: CollaborativeEditorProps) {
+export function CollaborativeEditor({ documentId, workspaceId, deviceId, activeWorkspaceKey, onPeersChange }: CollaborativeEditorProps) {
   const [isLoaded, setIsLoaded] = useState(false);
   const providerRef = useRef<IndexeddbPersistence | null>(null);
   const ydocRef = useRef<Y.Doc>(new Y.Doc());
   const peerManagerRef = useRef<PeerManager | null>(null);
+
+  const cursorColor = useRef(['#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'][Math.floor(Math.random() * 5)]).current;
 
   useEffect(() => {
     // Reset state for new document
@@ -37,7 +40,7 @@ export function CollaborativeEditor({ documentId, workspaceId, deviceId, onPeers
       setIsLoaded(true);
       
       // Once local state is loaded, spin up WebRTC networking
-      const pm = new PeerManager(deviceId, workspaceId, ydocRef.current);
+      const pm = new PeerManager(deviceId, workspaceId, ydocRef.current, activeWorkspaceKey);
       
       pm.onPeerConnect = () => {
         onPeersChange(pm.getConnectedPeerCount());
@@ -46,6 +49,12 @@ export function CollaborativeEditor({ documentId, workspaceId, deviceId, onPeers
       pm.onPeerDisconnect = () => {
         onPeersChange(pm.getConnectedPeerCount());
       };
+
+      // Set our local awareness state (name and color)
+      pm.awareness.setLocalStateField('user', {
+        name: deviceId.split('-')[0], // Use short device ID as name
+        color: cursorColor,
+      });
 
       peerManagerRef.current = pm;
     });
@@ -58,21 +67,19 @@ export function CollaborativeEditor({ documentId, workspaceId, deviceId, onPeers
       ydocRef.current.destroy();
       onPeersChange(0);
     };
-  }, [documentId, workspaceId, deviceId, onPeersChange]);
+  }, [documentId, workspaceId, deviceId, onPeersChange, cursorColor]);
 
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
-        // The Collaboration extension handles history, so disable StarterKit's history
         history: false, 
       } as any),
       Collaboration.configure({
         document: ydocRef.current,
       }),
     ],
-    // Empty content by default, Yjs will populate it
     content: '',
-  }, [documentId]); // Recreate editor when documentId changes
+  }, [documentId, isLoaded]);
 
   if (!isLoaded) {
     return (

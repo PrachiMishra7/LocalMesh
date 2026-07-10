@@ -4,18 +4,27 @@ interface EditorProps {
   activeDocumentId: string | null;
   deviceId: string;
   activeWorkspaceId: string | null;
+  activeWorkspaceKey: CryptoKey | null;
   onPeersChange: (count: number) => void;
 }
 
-export function EditorPlaceholder({ activeDocumentId, deviceId, activeWorkspaceId, onPeersChange }: EditorProps) {
+export function EditorPlaceholder({ activeDocumentId, deviceId, activeWorkspaceId, activeWorkspaceKey, onPeersChange }: EditorProps) {
   if (!activeDocumentId || !activeWorkspaceId) {
     return (
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ width: '64px', height: '64px', background: 'var(--bg-sidebar)', borderRadius: '16px', margin: '0 auto 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-subtle)' }}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-muted)' }}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', background: 'linear-gradient(135deg, var(--bg-app) 0%, var(--bg-panel) 100%)' }}>
+        <div style={{ textAlign: 'center', maxWidth: '400px', padding: '2rem', background: 'var(--bg-panel)', borderRadius: '16px', boxShadow: '0 10px 30px rgba(0,0,0,0.05)', border: '1px solid var(--border-subtle)' }}>
+          <div style={{ width: '64px', height: '64px', borderRadius: '16px', background: 'linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-hover) 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', boxShadow: '0 8px 16px rgba(79, 70, 229, 0.2)' }}>
+            <Network size={32} color="#ffffff" />
           </div>
-          <p>Select a document from the sidebar to start editing.</p>
+          <h2 style={{ color: 'var(--text-primary)', fontSize: '1.25rem', marginBottom: '0.5rem', fontWeight: 600 }}>Welcome to LocalMesh</h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: '1.5', marginBottom: '2rem' }}>
+            Select a workspace and open a document from the sidebar to start collaborating in real-time, completely peer-to-peer.
+          </p>
+          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 500, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }}/> Local First</span>
+            <span style={{ margin: '0 0.5rem' }}>•</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#8b5cf6' }}/> E2E CRDTs</span>
+          </div>
         </div>
       </div>
     );
@@ -26,6 +35,7 @@ export function EditorPlaceholder({ activeDocumentId, deviceId, activeWorkspaceI
       documentId={activeDocumentId} 
       workspaceId={activeWorkspaceId}
       deviceId={deviceId}
+      activeWorkspaceKey={activeWorkspaceKey}
       onPeersChange={onPeersChange}
     />
   );
@@ -33,7 +43,7 @@ export function EditorPlaceholder({ activeDocumentId, deviceId, activeWorkspaceI
 
 import { Network, Monitor } from 'lucide-react';
 
-export function SyncDashboard({ deviceId, activePeers }: { deviceId: string, activePeers: number }) {
+export function SyncDashboard({ deviceId, activePeers, isEncrypted }: { deviceId: string, activePeers: number, isEncrypted?: boolean }) {
   return (
     <div style={{ 
       width: '280px', 
@@ -44,7 +54,7 @@ export function SyncDashboard({ deviceId, activePeers }: { deviceId: string, act
       flexDirection: 'column' 
     }}>
       <h3 style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '1.5rem', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-        <Network size={14} /> Network Status
+        <Network size={14} /> Network Status {isEncrypted && <span style={{ color: '#8b5cf6' }}>(Encrypted)</span>}
       </h3>
       
       <div style={{ marginBottom: '1.5rem', background: 'var(--bg-panel)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>

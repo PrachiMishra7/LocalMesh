@@ -12,7 +12,7 @@ export class SignallingChannel {
   private localDeviceId: string;
   private messageQueue: SignallingMessage[] = []; // Queue messages if socket isn't open yet
 
-  constructor(workspaceId: string, deviceId: string) {
+  constructor(deviceId: string) {
     this.localDeviceId = deviceId;
     
     // Connect to the local Node.js signalling server
