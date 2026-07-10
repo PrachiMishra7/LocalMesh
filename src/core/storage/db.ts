@@ -21,17 +21,24 @@ export interface DocumentMeta {
   updatedAt: number;
 }
 
-const db = new Dexie('LocalMeshDB') as Dexie & {
+const db = new Dexie('LocalMeshDB_v2') as Dexie & {
   identities: EntityTable<Identity, 'id'>;
   workspaces: EntityTable<Workspace, 'id'>;
   documents: EntityTable<DocumentMeta, 'id'>;
 };
 
-// Schema declaration (incremented version to 2 to add new tables safely)
+// Schema declaration
+db.version(1).stores({
+  notes: 'id, updatedAt',
+  identities: 'id'
+});
+
+// Upgrade to version 2 (adds workspaces and documents, deletes notes)
 db.version(2).stores({
   identities: 'id',
   workspaces: 'id, createdAt',
-  documents: 'id, workspaceId, updatedAt'
+  documents: 'id, workspaceId, updatedAt',
+  notes: null
 });
 
 export { db };
