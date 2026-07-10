@@ -1,7 +1,14 @@
 import { CollaborativeEditor } from '../features/editor/CollaborativeEditor';
 
-export function EditorPlaceholder({ activeDocumentId }: { activeDocumentId: string | null }) {
-  if (!activeDocumentId) {
+interface EditorProps {
+  activeDocumentId: string | null;
+  deviceId: string;
+  activeWorkspaceId: string | null;
+  onPeersChange: (count: number) => void;
+}
+
+export function EditorPlaceholder({ activeDocumentId, deviceId, activeWorkspaceId, onPeersChange }: EditorProps) {
+  if (!activeDocumentId || !activeWorkspaceId) {
     return (
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
         <div style={{ textAlign: 'center' }}>
@@ -14,12 +21,19 @@ export function EditorPlaceholder({ activeDocumentId }: { activeDocumentId: stri
     );
   }
 
-  return <CollaborativeEditor documentId={activeDocumentId} />;
+  return (
+    <CollaborativeEditor 
+      documentId={activeDocumentId} 
+      workspaceId={activeWorkspaceId}
+      deviceId={deviceId}
+      onPeersChange={onPeersChange}
+    />
+  );
 }
 
 import { Network, Monitor } from 'lucide-react';
 
-export function SyncDashboard({ deviceId }: { deviceId: string }) {
+export function SyncDashboard({ deviceId, activePeers }: { deviceId: string, activePeers: number }) {
   return (
     <div style={{ 
       width: '280px', 
@@ -36,15 +50,15 @@ export function SyncDashboard({ deviceId }: { deviceId: string }) {
       <div style={{ marginBottom: '1.5rem', background: 'var(--bg-panel)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
           <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0 }}>Connection</p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', color: '#10b981', fontWeight: 500 }}>
-            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px rgba(16, 185, 129, 0.6)' }} />
-            Offline Local
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', color: activePeers > 0 ? '#10b981' : '#f59e0b', fontWeight: 500 }}>
+            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: activePeers > 0 ? '#10b981' : '#f59e0b', boxShadow: `0 0 8px ${activePeers > 0 ? 'rgba(16, 185, 129, 0.6)' : 'rgba(245, 158, 11, 0.6)'}` }} />
+            {activePeers > 0 ? 'Connected' : 'Offline / Local'}
           </div>
         </div>
         
         <div style={{ marginTop: '1rem' }}>
           <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: '0 0 0.4rem' }}>Device ID</p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', fontFamily: 'var(--mono)', backgroundColor: 'rgba(0,0,0,0.2)', padding: '0.5rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.05)', color: 'var(--text-primary)', wordBreak: 'break-all' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', fontFamily: 'var(--mono)', backgroundColor: 'rgba(0,0,0,0.05)', padding: '0.5rem', borderRadius: '4px', border: '1px solid rgba(0,0,0,0.05)', color: 'var(--text-primary)', wordBreak: 'break-all' }}>
             <Monitor size={14} color="var(--accent-primary)" /> 
             {deviceId.split('-')[0]}...
           </div>
@@ -52,9 +66,11 @@ export function SyncDashboard({ deviceId }: { deviceId: string }) {
       </div>
       
       <div style={{ background: 'var(--bg-panel)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
-        <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: '0 0 0.5rem' }}>Active Peers (0)</p>
+        <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: '0 0 0.5rem' }}>Active Peers ({activePeers})</p>
         <p style={{ fontSize: '0.8rem', fontStyle: 'italic', color: 'var(--text-muted)', margin: 0 }}>
-          WebRTC networking will be enabled in the next phase.
+          {activePeers > 0 
+            ? `Connected to ${activePeers} peer(s) via WebRTC DataChannel.` 
+            : 'Waiting for peers in this workspace...'}
         </p>
       </div>
     </div>

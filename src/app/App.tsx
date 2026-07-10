@@ -8,6 +8,7 @@ export default function App() {
   const [deviceId, setDeviceId] = useState<string>('Loading...');
   const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null);
   const [activeDocumentId, setActiveDocumentId] = useState<string | null>(null);
+  const [activePeers, setActivePeers] = useState<number>(0);
 
   useEffect(() => {
     const init = async () => {
@@ -30,8 +31,13 @@ export default function App() {
         activeDocumentId={activeDocumentId}
         setActiveDocumentId={setActiveDocumentId}
       />
-      <EditorPlaceholder activeDocumentId={activeDocumentId} />
-      <SyncDashboard deviceId={deviceId} />
+      <EditorPlaceholder 
+        activeDocumentId={activeDocumentId} 
+        deviceId={deviceId}
+        activeWorkspaceId={activeWorkspaceId}
+        onPeersChange={setActivePeers}
+      />
+      <SyncDashboard deviceId={deviceId} activePeers={activePeers} />
     </div>
   );
 }
