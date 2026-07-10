@@ -7,6 +7,8 @@ import { IndexeddbPersistence } from 'y-indexeddb';
 import { Loader2 } from 'lucide-react';
 import { PeerManager } from '../../core/networking/PeerManager';
 
+import { WorkspaceChat } from '../chat/WorkspaceChat';
+
 interface CollaborativeEditorProps {
   documentId: string;
   workspaceId: string;
@@ -62,8 +64,8 @@ export function CollaborativeEditor({ documentId, workspaceId, deviceId, onPeers
     extensions: [
       StarterKit.configure({
         // The Collaboration extension handles history, so disable StarterKit's history
-        history: false as any, 
-      }),
+        history: false, 
+      } as any),
       Collaboration.configure({
         document: ydocRef.current,
       }),
@@ -82,32 +84,37 @@ export function CollaborativeEditor({ documentId, workspaceId, deviceId, onPeers
   }
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      <div style={{ 
-        padding: '1rem 2rem', 
-        borderBottom: '1px solid var(--border-subtle)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '1rem',
-        background: 'rgba(255, 255, 255, 0.02)'
-      }}>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button onClick={() => editor?.chain().focus().toggleBold().run()} style={{ background: 'none', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)', padding: '0.4rem 0.8rem', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>B</button>
-          <button onClick={() => editor?.chain().focus().toggleItalic().run()} style={{ background: 'none', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)', padding: '0.4rem 0.8rem', borderRadius: '4px', cursor: 'pointer', fontStyle: 'italic' }}>I</button>
-          <button onClick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()} style={{ background: 'none', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)', padding: '0.4rem 0.8rem', borderRadius: '4px', cursor: 'pointer' }}>H1</button>
-          <button onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()} style={{ background: 'none', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)', padding: '0.4rem 0.8rem', borderRadius: '4px', cursor: 'pointer' }}>H2</button>
-          <button onClick={() => editor?.chain().focus().toggleBulletList().run()} style={{ background: 'none', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)', padding: '0.4rem 0.8rem', borderRadius: '4px', cursor: 'pointer' }}>List</button>
+    <div style={{ flex: 1, display: 'flex', height: '100%', overflow: 'hidden' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+        <div style={{ 
+          padding: '1rem 2rem', 
+          borderBottom: '1px solid var(--border-subtle)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '1rem',
+          background: 'var(--bg-panel)'
+        }}>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button onClick={() => editor?.chain().focus().toggleBold().run()} style={{ background: 'none', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)', padding: '0.4rem 0.8rem', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>B</button>
+            <button onClick={() => editor?.chain().focus().toggleItalic().run()} style={{ background: 'none', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)', padding: '0.4rem 0.8rem', borderRadius: '4px', cursor: 'pointer', fontStyle: 'italic' }}>I</button>
+            <button onClick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()} style={{ background: 'none', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)', padding: '0.4rem 0.8rem', borderRadius: '4px', cursor: 'pointer' }}>H1</button>
+            <button onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()} style={{ background: 'none', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)', padding: '0.4rem 0.8rem', borderRadius: '4px', cursor: 'pointer' }}>H2</button>
+            <button onClick={() => editor?.chain().focus().toggleBulletList().run()} style={{ background: 'none', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)', padding: '0.4rem 0.8rem', borderRadius: '4px', cursor: 'pointer' }}>List</button>
+          </div>
+          <div style={{ marginLeft: 'auto', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+            Saved locally
+          </div>
         </div>
-        <div style={{ marginLeft: 'auto', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-          Saved locally
+        
+        <div style={{ flex: 1, overflowY: 'auto', padding: '2rem 4rem' }}>
+          <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+            <EditorContent editor={editor} />
+          </div>
         </div>
       </div>
       
-      <div style={{ flex: 1, overflowY: 'auto', padding: '2rem 4rem' }}>
-        <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-          <EditorContent editor={editor} />
-        </div>
-      </div>
+      <WorkspaceChat ydoc={ydocRef.current} deviceId={deviceId} />
+      
       <style>
         {`
           @keyframes spin {

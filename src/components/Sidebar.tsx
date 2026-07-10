@@ -22,10 +22,12 @@ export function Sidebar({
   
   const workspaces = useLiveQuery(() => db.workspaces.orderBy('createdAt').reverse().toArray());
   const documents = useLiveQuery(
-    () => activeWorkspaceId 
-      ? db.documents.where('workspaceId').equals(activeWorkspaceId).reverse().sortBy('updatedAt')
-      : []
-    , [activeWorkspaceId]
+    async () => {
+      if (!activeWorkspaceId) return [];
+      const docs = await db.documents.where('workspaceId').equals(activeWorkspaceId).toArray();
+      return docs.sort((a, b) => b.updatedAt - a.updatedAt);
+    },
+    [activeWorkspaceId]
   );
 
   const handleCreateWorkspace = async () => {

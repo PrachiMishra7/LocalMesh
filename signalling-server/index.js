@@ -1,0 +1,61 @@
+const { WebSocketServer } = require('ws');
+
+const wss = new WebSocketServer({ port: 8080 });
+
+// Map of workspaceId -> Set of WebSocket clients
+const workspaces = new Map();
+
+wss.on('connection', (ws) => {
+  console.log('New client connected.');
+
+  // The workspace this client belongs to
+  let currentWorkspaceId = null;
+
+  ws.on('message', (messageAsString) => {
+    try {
+      const msg = JSON.parse(messageAsString);
+      const { workspaceId, senderId } = msg;
+
+      if (!workspaceId) return;
+
+      // Register the client to the workspace if not already done
+      if (currentWorkspaceId !== workspaceId) {
+        currentWorkspaceId = workspaceId;
+        if (!workspaces.has(workspaceId)) {
+          workspaces.set(workspaceId, new Set());
+        }
+        workspaces.get(workspaceId).add(ws);
+        console.log(`Client ${senderId} joined workspace ${workspaceId}`);
+      }
+
+      // Broadcast the message to everyone ELSE in the same workspace
+      const room = workspaces.get(workspaceId);
+      if (room) {
+        for (const client of room) {
+          if (client !== ws && client.readyState === 1) { // 1 = OPEN
+            client.send(messageAsString); // Send the raw string
+          }
+        }
+      }
+
+    } catch (e) {
+      console.error('Invalid message format received:', e.message);
+    }
+  });
+
+  ws.on('close', () => {
+    console.log('Client disconnected.');
+    if (currentWorkspaceId) {
+      const room = workspaces.get(currentWorkspaceId);
+      if (room) {
+        room.delete(ws);
+        if (room.size === 0) {
+          workspaces.delete(currentWorkspaceId);
+          console.log(`Workspace ${currentWorkspaceId} is now empty and removed.`);
+        }
+      }
+    }
+  });
+});
+
+console.log('WebSocket Signalling Server running on ws://localhost:8080');
