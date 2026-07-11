@@ -67,3 +67,13 @@ export interface ChatMessage {
     height: number;
   };
 }
+
+export interface SharedFile {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  data: string; // base64
+  uploadedBy: string;
+  uploadedAt: number;
+}

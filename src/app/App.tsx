@@ -89,6 +89,7 @@ export default function App() {
         activeWorkspaceId={activeWorkspaceId}
         activeWorkspaceSalt={activeWorkspaceSalt}
         onOpenAdmin={() => setShowAdmin(true)}
+        ydoc={activeYdoc}
       />
       {showAdmin && activeWorkspaceId && (
         <AdminPanel

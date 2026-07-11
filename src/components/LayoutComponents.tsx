@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type * as awarenessProtocol from 'y-protocols/awareness';
 import type * as Y from 'yjs';
 import { CollaborativeEditor } from '../features/editor/CollaborativeEditor';
-import { Network, Monitor, Users, Copy, Check, Shield, Wifi, WifiOff, UserPlus } from 'lucide-react';
+import { Network, Monitor, Users, Copy, Check, Shield, Wifi, WifiOff, UserPlus, FileUp, Download, File } from 'lucide-react';
 import type { MemberRole } from '../core/storage/db';
+import type { SharedFile } from '../core/protocol/messages';
+import { v4 as uuidv4 } from 'uuid';
 
 interface EditorProps {
   activeDocumentId: string | null;
@@ -72,11 +74,15 @@ interface SyncDashboardProps {
   activeWorkspaceId: string | null;
   activeWorkspaceSalt?: string | null;
   onOpenAdmin?: () => void;
+  ydoc?: Y.Doc | null;
 }
 
-export function SyncDashboard({ deviceId, activePeers, isEncrypted, awareness, activeWorkspaceId, activeWorkspaceSalt, onOpenAdmin }: SyncDashboardProps) {
+export function SyncDashboard({ deviceId, activePeers, isEncrypted, awareness, activeWorkspaceId, activeWorkspaceSalt, onOpenAdmin, ydoc }: SyncDashboardProps) {
   const [peers, setPeers] = useState<PeerState[]>([]);
   const [copied, setCopied] = useState(false);
+  const [files, setFiles] = useState<SharedFile[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!awareness) {
@@ -99,6 +105,53 @@ export function SyncDashboard({ deviceId, activePeers, isEncrypted, awareness, a
     awareness.on('change', updatePeers);
     return () => awareness.off('change', updatePeers);
   }, [awareness]);
+
+  useEffect(() => {
+    if (!ydoc) {
+      setFiles([]);
+      return;
+    }
+    const yFiles = ydoc.getArray<SharedFile>('files');
+    const updateFiles = () => {
+      setFiles(yFiles.toArray().sort((a, b) => b.uploadedAt - a.uploadedAt));
+    };
+    updateFiles();
+    yFiles.observe(updateFiles);
+    return () => yFiles.unobserve(updateFiles);
+  }, [ydoc]);
+
+  const handleFileUpload = (file: globalThis.File) => {
+    if (!ydoc) return;
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File size limit is 5MB for P2P sharing.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const data = e.target?.result as string;
+      const newFile: SharedFile = {
+        id: uuidv4(),
+        name: file.name,
+        size: file.size,
+        type: file.type || 'application/octet-stream',
+        data,
+        uploadedBy: deviceId.split('-')[0],
+        uploadedAt: Date.now()
+      };
+      ydoc.getArray<SharedFile>('files').push([newFile]);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const onDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
+  const onDragLeave = () => setIsDragging(false);
+  const onDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFileUpload(e.dataTransfer.files[0]);
+    }
+  };
 
   const handleCopy = () => {
     if (activeWorkspaceId) {
@@ -231,6 +284,62 @@ export function SyncDashboard({ deviceId, activePeers, isEncrypted, awareness, a
             <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
               No peers connected yet.<br/>Share the Workspace ID to invite others.
             </p>
+          </div>
+        )}
+
+        {/* Shared Files */}
+        {ydoc && (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '0 0 0.5rem' }}>
+              <p style={{ fontSize: '0.68rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: 0 }}>
+                Shared Files
+              </p>
+              <button 
+                onClick={() => fileInputRef.current?.click()}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent-primary)', fontSize: '0.65rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.2rem' }}
+              >
+                <FileUp size={11} /> Upload
+              </button>
+              <input type="file" ref={fileInputRef} onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0])} style={{ display: 'none' }} />
+            </div>
+
+            <div 
+              onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop}
+              style={{ 
+                background: isDragging ? 'rgba(99,102,241,0.05)' : 'var(--bg-panel)', 
+                borderRadius: '10px', padding: files.length > 0 ? '0.4rem' : '1.5rem 1rem', 
+                border: isDragging ? '1px dashed var(--accent-primary)' : '1px solid var(--border-subtle)',
+                textAlign: files.length === 0 ? 'center' : 'left',
+                transition: 'all 0.2s',
+                display: 'flex', flexDirection: 'column', gap: '0.3rem'
+              }}
+            >
+              {files.length === 0 ? (
+                <>
+                  <FileUp size={20} color="var(--text-muted)" style={{ margin: '0 auto 0.5rem' }} />
+                  <p style={{ margin: 0, fontSize: '0.72rem', color: 'var(--text-muted)' }}>Drag & drop files here<br/>(Max 5MB)</p>
+                </>
+              ) : (
+                files.map((file) => (
+                  <div key={file.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem', borderRadius: '6px', background: 'var(--bg-sidebar)', border: '1px solid var(--border-subtle)' }}>
+                    <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: 'rgba(99,102,241,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-primary)', flexShrink: 0 }}>
+                      <File size={14} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ margin: 0, fontSize: '0.7rem', fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.name}</p>
+                      <p style={{ margin: 0, fontSize: '0.6rem', color: 'var(--text-muted)' }}>{(file.size / 1024).toFixed(1)} KB • {file.uploadedBy}</p>
+                    </div>
+                    <a 
+                      href={file.data} download={file.name}
+                      style={{ background: 'none', border: 'none', padding: '4px', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex' }}
+                      title="Download file"
+                    >
+                      <Download size={14} />
+                    </a>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         )}
 

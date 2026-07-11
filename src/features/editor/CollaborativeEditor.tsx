@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Collaboration from '@tiptap/extension-collaboration';
+import CollaborationCursor from '@tiptap/extension-collaboration-cursor';
 import * as Y from 'yjs';
 import { IndexeddbPersistence } from 'y-indexeddb';
 import { Loader2, Eye, Download } from 'lucide-react';
@@ -88,6 +89,10 @@ export function CollaborativeEditor({ documentId, workspaceId, deviceId, activeW
     extensions: [
       StarterKit.configure({ history: false } as any),
       Collaboration.configure({ document: ydocRef.current }),
+      ...(peerManagerRef.current ? [CollaborationCursor.configure({ 
+        provider: { awareness: peerManagerRef.current.awareness } as any, 
+        user: { name: deviceId.split('-')[0], color: cursorColor } 
+      })] : []),
     ],
     content: '',
     editable: !isReadOnly,

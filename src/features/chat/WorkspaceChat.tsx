@@ -49,6 +49,7 @@ export function WorkspaceChat({ ydoc, deviceId }: WorkspaceChatProps) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [typingPeers, setTypingPeers] = useState<string[]>([]);
   const [attachment, setAttachment] = useState<ChatMessage['attachment']>(undefined);
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   
   // Rate limiting state
   const [sentTimestamps, setSentTimestamps] = useState<number[]>([]);
@@ -389,7 +390,8 @@ export function WorkspaceChat({ ydoc, deviceId }: WorkspaceChatProps) {
                           <img 
                             src={msg.attachment.data} 
                             alt={msg.attachment.name} 
-                            style={{ maxWidth: '100%', borderRadius: '8px', border: '1px solid rgba(0,0,0,0.1)' }} 
+                            onClick={() => setLightboxImage(msg.attachment!.data)}
+                            style={{ maxWidth: '100%', borderRadius: '8px', border: '1px solid rgba(0,0,0,0.1)', cursor: 'zoom-in' }} 
                           />
                         )}
                         {msg.content && <MarkdownMessage content={msg.content} />}
@@ -561,14 +563,35 @@ export function WorkspaceChat({ ydoc, deviceId }: WorkspaceChatProps) {
         </button>
       </form>
 
-      {/* Bounce animation */}
+      {/* Bounce animation & Lightbox */}
       <style>{`
         @keyframes bounce { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-5px); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes scaleUp { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
         .msg-actions { visibility: hidden; }
         div:hover > div > .msg-actions { visibility: visible; }
         .msg-action-btn { opacity: 0 !important; }
         div:hover .msg-action-btn { opacity: 1 !important; }
       `}</style>
+
+      {/* Fullscreen Lightbox */}
+      {lightboxImage && (
+        <div 
+          onClick={() => setLightboxImage(null)}
+          style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999,
+            backgroundColor: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(10px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'zoom-out', animation: 'fadeIn 0.2s ease-out'
+          }}
+        >
+          <img 
+            src={lightboxImage} 
+            alt="Enlarged" 
+            style={{ maxWidth: '90vw', maxHeight: '90vh', objectFit: 'contain', borderRadius: '8px', boxShadow: '0 20px 40px rgba(0,0,0,0.3)', animation: 'scaleUp 0.2s ease-out' }} 
+          />
+        </div>
+      )}
     </div>
   );
 }
