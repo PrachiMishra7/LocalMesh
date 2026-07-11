@@ -55,4 +55,8 @@ export interface ChatMessage {
   content: string;
   authorId: string;
   timestamp: number;
+  editedAt?: number;
+  deletedAt?: number;
+  replyToId?: string;
+  reactions?: Record<string, string[]>; // emoji -> [authorId, ...]
 }

@@ -1,18 +1,22 @@
 import { useState, useEffect } from 'react';
 import type * as awarenessProtocol from 'y-protocols/awareness';
+import type * as Y from 'yjs';
 import { CollaborativeEditor } from '../features/editor/CollaborativeEditor';
 import { Network, Monitor, Users, Copy, Check, Shield, Wifi, WifiOff } from 'lucide-react';
+import type { MemberRole } from '../core/storage/db';
 
 interface EditorProps {
   activeDocumentId: string | null;
   deviceId: string;
   activeWorkspaceId: string | null;
   activeWorkspaceKey: CryptoKey | null;
+  myRole: MemberRole;
   onPeersChange: (count: number) => void;
   onAwarenessReady: (awareness: awarenessProtocol.Awareness | null) => void;
+  onYdocReady: (ydoc: Y.Doc | null) => void;
 }
 
-export function EditorPlaceholder({ activeDocumentId, deviceId, activeWorkspaceId, activeWorkspaceKey, onPeersChange, onAwarenessReady }: EditorProps) {
+export function EditorPlaceholder({ activeDocumentId, deviceId, activeWorkspaceId, activeWorkspaceKey, myRole, onPeersChange, onAwarenessReady, onYdocReady }: EditorProps) {
   if (!activeDocumentId || !activeWorkspaceId) {
     return (
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', background: 'linear-gradient(135deg, var(--bg-app) 0%, var(--bg-panel) 100%)' }}>
@@ -41,13 +45,15 @@ export function EditorPlaceholder({ activeDocumentId, deviceId, activeWorkspaceI
   }
 
   return (
-    <CollaborativeEditor 
-      documentId={activeDocumentId} 
+    <CollaborativeEditor
+      documentId={activeDocumentId}
       workspaceId={activeWorkspaceId}
       deviceId={deviceId}
       activeWorkspaceKey={activeWorkspaceKey}
+      myRole={myRole}
       onPeersChange={onPeersChange}
       onAwarenessReady={onAwarenessReady}
+      onYdocReady={onYdocReady}
     />
   );
 }

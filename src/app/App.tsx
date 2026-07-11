@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
 import * as awarenessProtocol from 'y-protocols/awareness';
+import type * as Y from 'yjs';
 import { getOrCreateDeviceId } from '../core/identity/identityService';
 import { Sidebar } from '../components/Sidebar';
 import { EditorPlaceholder, SyncDashboard } from '../components/LayoutComponents';
 import { AdminPanel } from '../components/AdminPanel';
+import { getMyRole } from '../core/members/memberService';
+import type { MemberRole } from '../core/storage/db';
 import './App.css'; // Add basic resets
 
 export default function App() {
@@ -15,6 +18,8 @@ export default function App() {
   const [activePeers, setActivePeers] = useState<number>(0);
   const [awareness, setAwareness] = useState<awarenessProtocol.Awareness | null>(null);
   const [showAdmin, setShowAdmin] = useState(false);
+  const [myRole, setMyRole] = useState<MemberRole>('member');
+  const [activeYdoc, setActiveYdoc] = useState<Y.Doc | null>(null);
 
   useEffect(() => {
     const init = async () => {
@@ -34,6 +39,12 @@ export default function App() {
     setActiveWorkspaceKey(null);
     setActiveWorkspaceSalt(salt || null);
     setAwareness(null);
+    setActiveYdoc(null);
+
+    // Load current user's role for this workspace
+    const id = await getOrCreateDeviceId();
+    const role = await getMyRole(wsId, id);
+    setMyRole(role);
 
     if (hasPassword && salt) {
       const pwd = prompt('This Workspace is encrypted. Enter the Workspace Password to unlock it:');
@@ -53,24 +64,26 @@ export default function App() {
 
   return (
     <div style={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden', fontFamily: 'system-ui, sans-serif' }}>
-      <Sidebar 
+      <Sidebar
         deviceId={deviceId}
         activeWorkspaceId={activeWorkspaceId}
         setActiveWorkspaceId={handleWorkspaceSelect}
         activeDocumentId={activeDocumentId}
         setActiveDocumentId={setActiveDocumentId}
       />
-      <EditorPlaceholder 
-        activeDocumentId={activeDocumentId} 
+      <EditorPlaceholder
+        activeDocumentId={activeDocumentId}
         deviceId={deviceId}
         activeWorkspaceId={activeWorkspaceId}
         activeWorkspaceKey={activeWorkspaceKey}
+        myRole={myRole}
         onPeersChange={setActivePeers}
         onAwarenessReady={setAwareness}
+        onYdocReady={setActiveYdoc}
       />
-      <SyncDashboard 
-        deviceId={deviceId} 
-        activePeers={activePeers} 
+      <SyncDashboard
+        deviceId={deviceId}
+        activePeers={activePeers}
         isEncrypted={!!activeWorkspaceKey}
         awareness={awareness}
         activeWorkspaceId={activeWorkspaceId}
@@ -81,7 +94,9 @@ export default function App() {
         <AdminPanel
           workspaceId={activeWorkspaceId}
           deviceId={deviceId}
+          myRole={myRole}
           awareness={awareness}
+          ydoc={activeYdoc}
           onClose={() => setShowAdmin(false)}
           onWorkspaceDeleted={() => { setShowAdmin(false); setActiveWorkspaceId(null); setActiveDocumentId(null); }}
           onWorkspaceRenamed={() => {}}

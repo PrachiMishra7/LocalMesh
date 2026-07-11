@@ -3,6 +3,7 @@ import { db } from '../core/storage/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { v4 as uuidv4 } from 'uuid';
 import { Folder, FileText, Plus, Settings, Users, LogIn, X, Lock, Shield } from 'lucide-react';
+import { registerAsOwner, registerAsMember } from '../core/members/memberService';
 
 interface SidebarProps {
   deviceId: string;
@@ -230,27 +231,27 @@ export function Sidebar({
 
   const handleCreate = async (name: string, password: string) => {
     const id = uuidv4();
-    const ws: any = { id, name, createdAt: Date.now(), createdBy: 'local' };
+    const ws: any = { id, name, createdAt: Date.now(), createdBy: deviceId };
     if (password.trim().length > 0) {
       ws.hasPassword = true;
       ws.passwordSalt = uuidv4();
     }
     await db.workspaces.put(ws);
+    // Auto-register creator as owner
+    await registerAsOwner(id, deviceId, deviceId.slice(0, 8));
     setShowCreate(false);
     setActiveWorkspaceId(id, ws.hasPassword, ws.passwordSalt);
   };
 
   const handleJoin = async (id: string, name: string, hasPassword: boolean, salt?: string) => {
-    // Check if already saved locally
     const existing = await db.workspaces.get(id);
     if (!existing) {
       const ws: any = { id, name, createdAt: Date.now(), createdBy: 'remote' };
-      if (hasPassword) {
-        ws.hasPassword = true;
-        ws.passwordSalt = salt || id; // Use provided salt from invite, fallback to id
-      }
+      if (hasPassword) { ws.hasPassword = true; ws.passwordSalt = salt || id; }
       await db.workspaces.put(ws);
     }
+    // Auto-register as member
+    await registerAsMember(id, deviceId, deviceId.slice(0, 8));
     setShowJoin(false);
     setActiveWorkspaceId(id, existing?.hasPassword || hasPassword, existing?.passwordSalt || salt || id);
   };

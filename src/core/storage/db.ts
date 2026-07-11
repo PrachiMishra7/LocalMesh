@@ -31,11 +31,26 @@ export interface ActivityEvent {
   timestamp: number;
 }
 
+export type MemberRole = 'owner' | 'admin' | 'member' | 'viewer';
+export type MemberStatus = 'active' | 'pending' | 'removed';
+
+export interface WorkspaceMember {
+  id: string;           // `${workspaceId}:${deviceId}`
+  workspaceId: string;
+  deviceId: string;
+  displayName: string;
+  role: MemberRole;
+  status: MemberStatus;
+  addedAt: number;
+  addedBy: string;      // deviceId of who added them
+}
+
 const db = new Dexie('LocalMeshDB_v2') as Dexie & {
   identities: EntityTable<Identity, 'id'>;
   workspaces: EntityTable<Workspace, 'id'>;
   documents: EntityTable<DocumentMeta, 'id'>;
   activity: EntityTable<ActivityEvent, 'id'>;
+  members: EntityTable<WorkspaceMember, 'id'>;
 };
 
 // Schema declaration
@@ -58,6 +73,15 @@ db.version(3).stores({
   workspaces: 'id, createdAt',
   documents: 'id, workspaceId, updatedAt',
   activity: 'id, workspaceId, timestamp'
+});
+
+// Upgrade to version 4 (adds member roster)
+db.version(4).stores({
+  identities: 'id',
+  workspaces: 'id, createdAt',
+  documents: 'id, workspaceId, updatedAt',
+  activity: 'id, workspaceId, timestamp',
+  members: 'id, workspaceId, deviceId, role, status'
 });
 
 export { db };
