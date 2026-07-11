@@ -112,7 +112,17 @@ export async function getWorkspaceMembers(workspaceId: string): Promise<Workspac
 /** Get current user's role in a workspace */
 export async function getMyRole(workspaceId: string, deviceId: string): Promise<MemberRole> {
   const member = await db.members.get(memberId(workspaceId, deviceId));
-  return member?.role ?? 'member';
+  if (member) return member.role;
+
+  // Fallback for legacy workspaces created before the members table existed
+  const ws = await db.workspaces.get(workspaceId);
+  if (ws && (ws.createdBy === deviceId || ws.createdBy === 'local')) {
+    // Auto-register them as owner since they created it
+    await registerAsOwner(workspaceId, deviceId, deviceId.split('-')[0]);
+    return 'owner';
+  }
+
+  return 'member';
 }
 
 /**

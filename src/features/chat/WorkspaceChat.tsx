@@ -45,6 +45,11 @@ export function WorkspaceChat({ ydoc, deviceId }: WorkspaceChatProps) {
   const [showEmojiFor, setShowEmojiFor] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [typingPeers, setTypingPeers] = useState<string[]>([]);
+  
+  // Rate limiting state
+  const [sentTimestamps, setSentTimestamps] = useState<number[]>([]);
+  const [rateLimited, setRateLimited] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -101,7 +106,17 @@ export function WorkspaceChat({ ydoc, deviceId }: WorkspaceChatProps) {
   // ── Send ────────────────────────────────────────────────────────────────────
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() || rateLimited) return;
+
+    // Rate limiting: max 5 messages per 10 seconds
+    const now = Date.now();
+    const recentSends = sentTimestamps.filter(t => now - t < 10000);
+    if (recentSends.length >= 5) {
+      setRateLimited(true);
+      setTimeout(() => setRateLimited(false), 5000); // cooldown for 5 seconds
+      return;
+    }
+    setSentTimestamps([...recentSends, now]);
 
     const ychat = ydoc.getArray<ChatMessage>('chat');
     ychat.push([{
@@ -417,7 +432,12 @@ export function WorkspaceChat({ ydoc, deviceId }: WorkspaceChatProps) {
       )}
 
       {/* Input */}
-      <form onSubmit={handleSend} style={{ padding: '0.75rem', borderTop: '1px solid var(--border-subtle)', backgroundColor: 'var(--bg-sidebar)', display: 'flex', gap: '0.5rem', alignItems: 'center', flexShrink: 0 }}>
+      <form onSubmit={handleSend} style={{ padding: '0.75rem', borderTop: '1px solid var(--border-subtle)', backgroundColor: 'var(--bg-sidebar)', display: 'flex', gap: '0.5rem', alignItems: 'center', flexShrink: 0, position: 'relative' }}>
+        {rateLimited && (
+          <div style={{ position: 'absolute', top: '-30px', left: '50%', transform: 'translateX(-50%)', fontSize: '0.7rem', color: '#ef4444', background: 'var(--bg-panel)', padding: '4px 12px', borderRadius: '12px', border: '1px solid rgba(239,68,68,0.3)', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+            Sending too fast! Please wait.
+          </div>
+        )}
         <button
           type="button"
           onClick={e => { e.stopPropagation(); if (messages.length > 0) setShowEmojiFor(showEmojiFor ? null : 'quick'); }}
@@ -431,8 +451,10 @@ export function WorkspaceChat({ ydoc, deviceId }: WorkspaceChatProps) {
           value={input}
           onChange={e => { setInput(e.target.value); handleTyping(); }}
           onKeyDown={e => { if (e.key === 'Escape') setReplyTo(null); }}
-          placeholder="Type a message..."
-          style={{ flex: 1, padding: '0.6rem 0.875rem', borderRadius: '20px', border: '1.5px solid var(--border-subtle)', backgroundColor: 'var(--bg-panel)', color: 'var(--text-primary)', fontSize: '0.85rem', outline: 'none', transition: 'border 0.2s' }}
+          placeholder={rateLimited ? "Rate limited..." : "Type a message..."}
+          disabled={rateLimited}
+          style={{ flex: 1, padding: '0.6rem 0.875rem', borderRadius: '20px', border: '1.5px solid var(--border-subtle)', backgroundColor: 'var(--bg-panel)', color: 'var(--text-primary)', fontSize: '0.85rem', outline: 'none', transition: 'border 0.2s', opacity: rateLimited ? 0.5 : 1 }}
+
           onFocus={e => e.target.style.borderColor = 'var(--accent-primary)'}
           onBlur={e => e.target.style.borderColor = 'var(--border-subtle)'}
         />

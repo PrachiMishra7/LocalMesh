@@ -208,6 +208,55 @@ function CreateModal({ onClose, onCreate }: { onClose: () => void; onCreate: (na
   );
 }
 
+// ── Create Document Modal ───────────────────────────────────────────────────
+function CreateDocModal({ onClose, onCreate }: { onClose: () => void; onCreate: (title: string) => void }) {
+  const [title, setTitle] = useState('');
+  
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim()) return;
+    onCreate(title.trim());
+  };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}>
+      <div style={{ background: 'var(--bg-panel)', borderRadius: '16px', padding: '1.75rem', width: '380px', maxWidth: '90vw', border: '1px solid var(--border-subtle)', boxShadow: '0 24px 60px rgba(0,0,0,0.15)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <div style={{ width: '32px', height: '32px', borderRadius: '9px', background: 'linear-gradient(135deg, #3b82f6, #6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <FileText size={16} color="#ffffff" />
+            </div>
+            <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>New Document</h3>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}>
+            <X size={17} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div>
+            <label style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.35rem' }}>Document Title</label>
+            <input 
+              autoFocus
+              value={title} 
+              onChange={e => setTitle(e.target.value)} 
+              placeholder="e.g. Project Requirements"
+              style={{ width: '100%', boxSizing: 'border-box', padding: '0.65rem 0.875rem', borderRadius: '8px', border: '1.5px solid var(--border-subtle)', background: 'var(--bg-sidebar)', color: 'var(--text-primary)', fontSize: '0.85rem', outline: 'none', transition: 'border 0.2s' }}
+              onFocus={e => e.target.style.borderColor = 'var(--accent-primary)'}
+              onBlur={e => e.target.style.borderColor = 'var(--border-subtle)'}
+            />
+          </div>
+          
+          <div style={{ display: 'flex', gap: '0.6rem', marginTop: '0.5rem' }}>
+            <button type="button" onClick={onClose} style={{ flex: 1, padding: '0.65rem', borderRadius: '8px', border: '1.5px solid var(--border-subtle)', background: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600 }}>Cancel</button>
+            <button type="submit" disabled={!title.trim()} style={{ flex: 1, padding: '0.65rem', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #3b82f6, #6366f1)', color: '#ffffff', cursor: title.trim() ? 'pointer' : 'not-allowed', opacity: title.trim() ? 1 : 0.6, fontSize: '0.82rem', fontWeight: 600 }}>Create</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 // ─── Sidebar ───────────────────────────────────────────────────────────────────
 export function Sidebar({ 
   deviceId, 
@@ -218,6 +267,7 @@ export function Sidebar({
 }: SidebarProps) {
   const [showCreate, setShowCreate] = useState(false);
   const [showJoin, setShowJoin] = useState(false);
+  const [showCreateDoc, setShowCreateDoc] = useState(false);
 
   const workspaces = useLiveQuery(() => db.workspaces.orderBy('createdAt').reverse().toArray());
   const documents = useLiveQuery(
@@ -256,12 +306,11 @@ export function Sidebar({
     setActiveWorkspaceId(id, existing?.hasPassword || hasPassword, existing?.passwordSalt || salt || id);
   };
 
-  const handleCreateDocument = async () => {
+  const handleCreateDocument = async (title: string) => {
     if (!activeWorkspaceId) return;
-    const title = prompt('Enter Document Title:');
-    if (!title) return;
     const id = uuidv4();
     await db.documents.put({ id, workspaceId: activeWorkspaceId, title, createdAt: Date.now(), updatedAt: Date.now() });
+    setShowCreateDoc(false);
     setActiveDocumentId(id);
   };
 
@@ -269,6 +318,7 @@ export function Sidebar({
     <>
       {showCreate && <CreateModal onClose={() => setShowCreate(false)} onCreate={handleCreate} />}
       {showJoin && <JoinModal onClose={() => setShowJoin(false)} onJoin={handleJoin} />}
+      {showCreateDoc && <CreateDocModal onClose={() => setShowCreateDoc(false)} onCreate={handleCreateDocument} />}
 
       <div style={{ width: '280px', backgroundColor: 'var(--bg-sidebar)', borderRight: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', height: '100vh', boxSizing: 'border-box' }}>
         
@@ -346,10 +396,10 @@ export function Sidebar({
           {/* Documents */}
           {activeWorkspaceId && (
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 0.5rem', marginBottom: '0.5rem' }}>
                 <h3 style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: 0 }}>Documents</h3>
                 <button
-                  onClick={handleCreateDocument}
+                  onClick={() => setShowCreateDoc(true)}
                   title="New document"
                   style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px 6px', borderRadius: '5px', display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.68rem', fontWeight: 500 }}
                   onMouseOver={e => { e.currentTarget.style.background = 'var(--border-subtle)'; e.currentTarget.style.color = 'var(--accent-primary)'; }}

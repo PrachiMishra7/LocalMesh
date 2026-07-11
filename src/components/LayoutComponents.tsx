@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import type * as awarenessProtocol from 'y-protocols/awareness';
 import type * as Y from 'yjs';
 import { CollaborativeEditor } from '../features/editor/CollaborativeEditor';
-import { Network, Monitor, Users, Copy, Check, Shield, Wifi, WifiOff } from 'lucide-react';
+import { Network, Monitor, Users, Copy, Check, Shield, Wifi, WifiOff, UserPlus } from 'lucide-react';
 import type { MemberRole } from '../core/storage/db';
 
 interface EditorProps {
@@ -130,15 +130,26 @@ export function SyncDashboard({ deviceId, activePeers, isEncrypted, awareness, a
           <Users size={13} /> Group Members
         </h3>
         {activeWorkspaceId && onOpenAdmin && (
-          <button
-            onClick={onOpenAdmin}
-            title="Workspace Admin Panel"
-            style={{ background: 'none', border: '1px solid var(--border-subtle)', borderRadius: '6px', padding: '3px 8px', cursor: 'pointer', fontSize: '0.65rem', fontWeight: 600, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.3rem', transition: 'all 0.15s' }}
-            onMouseOver={e => { e.currentTarget.style.background = 'rgba(99,102,241,0.08)'; e.currentTarget.style.color = 'var(--accent-primary)'; e.currentTarget.style.borderColor = 'var(--accent-primary)'; }}
-            onMouseOut={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--border-subtle)'; }}
-          >
-            <Shield size={11} /> Admin
-          </button>
+          <div style={{ display: 'flex', gap: '0.4rem' }}>
+            <button
+              onClick={onOpenAdmin}
+              title="Add Member"
+              style={{ background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none', borderRadius: '6px', padding: '3px 8px', cursor: 'pointer', fontSize: '0.65rem', fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: '0.3rem', transition: 'all 0.15s', boxShadow: '0 2px 4px rgba(16,185,129,0.2)' }}
+              onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 8px rgba(16,185,129,0.3)'; }}
+              onMouseOut={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 2px 4px rgba(16,185,129,0.2)'; }}
+            >
+              <UserPlus size={11} /> Add
+            </button>
+            <button
+              onClick={onOpenAdmin}
+              title="Workspace Admin Panel"
+              style={{ background: 'none', border: '1px solid var(--border-subtle)', borderRadius: '6px', padding: '3px 8px', cursor: 'pointer', fontSize: '0.65rem', fontWeight: 600, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.3rem', transition: 'all 0.15s' }}
+              onMouseOver={e => { e.currentTarget.style.background = 'rgba(99,102,241,0.08)'; e.currentTarget.style.color = 'var(--accent-primary)'; e.currentTarget.style.borderColor = 'var(--accent-primary)'; }}
+              onMouseOut={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--border-subtle)'; }}
+            >
+              <Shield size={11} /> Admin
+            </button>
+          </div>
         )}
       </div>
 
