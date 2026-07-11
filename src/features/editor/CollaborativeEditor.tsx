@@ -4,7 +4,7 @@ import StarterKit from '@tiptap/starter-kit';
 import Collaboration from '@tiptap/extension-collaboration';
 import * as Y from 'yjs';
 import { IndexeddbPersistence } from 'y-indexeddb';
-import { Loader2, Eye } from 'lucide-react';
+import { Loader2, Eye, Download } from 'lucide-react';
 import { PeerManager } from '../../core/networking/PeerManager';
 import { WorkspaceChat } from '../chat/WorkspaceChat';
 import type * as awarenessProtocol from 'y-protocols/awareness';
@@ -103,10 +103,10 @@ export function CollaborativeEditor({ documentId, workspaceId, deviceId, activeW
   }
 
   return (
-    <div style={{ flex: 1, display: 'flex', height: '100%', overflow: 'hidden' }}>
+    <div className="collaborative-editor-container" style={{ flex: 1, display: 'flex', height: '100%', overflow: 'hidden' }}>
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
         {/* Toolbar */}
-        <div style={{
+        <div className="editor-toolbar" style={{
           padding: '0.75rem 2rem',
           borderBottom: '1px solid var(--border-subtle)',
           display: 'flex',
@@ -134,7 +134,16 @@ export function CollaborativeEditor({ documentId, workspaceId, deviceId, activeW
             </div>
           )}
 
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+            <button
+              onClick={() => window.print()}
+              title="Export as PDF"
+              style={{ background: 'none', border: '1px solid var(--border-subtle)', borderRadius: '6px', padding: '3px 8px', cursor: 'pointer', fontSize: '0.65rem', fontWeight: 600, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.3rem', transition: 'all 0.15s' }}
+              onMouseOver={e => { e.currentTarget.style.background = 'rgba(99,102,241,0.08)'; e.currentTarget.style.color = 'var(--accent-primary)'; e.currentTarget.style.borderColor = 'var(--accent-primary)'; }}
+              onMouseOut={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--border-subtle)'; }}
+            >
+              <Download size={11} /> Export PDF
+            </button>
             {/* Role pill */}
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '2px 8px', borderRadius: '10px', background: myRole === 'owner' ? 'rgba(245,158,11,0.12)' : myRole === 'admin' ? 'rgba(99,102,241,0.1)' : myRole === 'viewer' ? 'rgba(148,163,184,0.1)' : 'rgba(16,185,129,0.1)', color: myRole === 'owner' ? '#f59e0b' : myRole === 'admin' ? '#6366f1' : myRole === 'viewer' ? '#94a3b8' : '#10b981', fontWeight: 700, fontSize: '0.62rem', textTransform: 'uppercase' }}>
               {myRole}

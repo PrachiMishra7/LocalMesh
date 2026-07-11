@@ -115,7 +115,7 @@ export function SyncDashboard({ deviceId, activePeers, isEncrypted, awareness, a
   const colorPalette = ['#6366f1','#8b5cf6','#ec4899','#10b981','#f59e0b','#3b82f6','#ef4444','#14b8a6'];
   
   return (
-    <div style={{ 
+    <div className="sync-dashboard" style={{ 
       width: '280px', 
       backgroundColor: 'var(--bg-sidebar)', 
       borderLeft: '1px solid var(--border-subtle)', 

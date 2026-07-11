@@ -22,6 +22,27 @@
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
+[data-theme='dark'] {
+  --bg-app: #0f1115;
+  --bg-sidebar: #17191f;
+  --bg-panel: #17191f;
+  
+  --border-subtle: #2d3139;
+  --border-active: #3f4451;
+  
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  
+  --accent-primary: #6366f1;
+  --accent-primary-hover: #818cf8;
+  --accent-secondary: #38bdf8;
+  
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.25);
+  --shadow-glow: 0 10px 15px -3px rgba(99, 102, 241, 0.3);
+}
+
 body {
   margin: 0;
   padding: 0;
@@ -139,4 +160,32 @@ body {
   top: -1.4em;
   user-select: none;
   white-space: nowrap;
+}
+
+/* Print Styles for PDF Export */
+@media print {
+  body {
+    background: white;
+    color: black;
+  }
+  
+  /* Hide UI elements */
+  .sidebar, .workspace-chat, .editor-toolbar, .sync-dashboard {
+    display: none !important;
+  }
+  
+  /* Expand editor to full page */
+  .collaborative-editor-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+  
+  .ProseMirror {
+    min-height: auto;
+    padding: 2cm !important;
+  }
 }

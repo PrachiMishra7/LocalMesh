@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { db } from '../core/storage/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { v4 as uuidv4 } from 'uuid';
-import { Folder, FileText, Plus, Settings, Users, LogIn, X, Lock, Shield } from 'lucide-react';
+import { Folder, FileText, Plus, Settings, Users, LogIn, X, Lock, Shield, Moon, Sun } from 'lucide-react';
 import { registerAsOwner, registerAsMember } from '../core/members/memberService';
 
 interface SidebarProps {
@@ -268,6 +268,16 @@ export function Sidebar({
   const [showCreate, setShowCreate] = useState(false);
   const [showJoin, setShowJoin] = useState(false);
   const [showCreateDoc, setShowCreateDoc] = useState(false);
+  const [theme, setTheme] = useState<'light'|'dark'>(() => {
+    const saved = localStorage.getItem('localmesh-theme');
+    if (saved === 'dark' || saved === 'light') return saved;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('localmesh-theme', theme);
+  }, [theme]);
 
   const workspaces = useLiveQuery(() => db.workspaces.orderBy('createdAt').reverse().toArray());
   const documents = useLiveQuery(
@@ -320,7 +330,7 @@ export function Sidebar({
       {showJoin && <JoinModal onClose={() => setShowJoin(false)} onJoin={handleJoin} />}
       {showCreateDoc && <CreateDocModal onClose={() => setShowCreateDoc(false)} onCreate={handleCreateDocument} />}
 
-      <div style={{ width: '280px', backgroundColor: 'var(--bg-sidebar)', borderRight: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', height: '100vh', boxSizing: 'border-box' }}>
+      <div className="sidebar" style={{ width: '280px', backgroundColor: 'var(--bg-sidebar)', borderRight: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', height: '100vh', boxSizing: 'border-box' }}>
         
         {/* Brand */}
         <div style={{ padding: '1.25rem 1.25rem 1rem', borderBottom: '1px solid var(--border-subtle)' }}>
@@ -448,7 +458,16 @@ export function Sidebar({
             <div style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.8rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>My Device</div>
             <div style={{ color: 'var(--text-muted)', fontSize: '0.68rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontFamily: 'var(--mono)' }}>{deviceId.slice(0, 14)}...</div>
           </div>
-          <Settings size={14} color="var(--text-muted)" style={{ cursor: 'pointer', flexShrink: 0 }} />
+          <button 
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} 
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', borderRadius: '6px' }}
+            title="Toggle theme"
+            onMouseOver={e => e.currentTarget.style.backgroundColor = 'var(--border-subtle)'}
+            onMouseOut={e => e.currentTarget.style.backgroundColor = 'transparent'}
+          >
+            {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+          </button>
+          <Settings size={14} color="var(--text-muted)" style={{ cursor: 'pointer', flexShrink: 0, marginLeft: '4px' }} />
         </div>
       </div>
     </>

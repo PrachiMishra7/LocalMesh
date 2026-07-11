@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import * as Y from 'yjs';
-import { Send, MessageSquare, Search, X, Reply, Edit2, Trash2, Smile, Copy, Check, MoreHorizontal } from 'lucide-react';
+import { Send, MessageSquare, Search, X, Reply, Edit2, Trash2, Smile, Copy, Check, MoreHorizontal, Paperclip, Image as ImageIcon } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import type { ChatMessage } from '../../core/protocol/messages';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -45,6 +48,7 @@ export function WorkspaceChat({ ydoc, deviceId }: WorkspaceChatProps) {
   const [showEmojiFor, setShowEmojiFor] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [typingPeers, setTypingPeers] = useState<string[]>([]);
+  const [attachment, setAttachment] = useState<ChatMessage['attachment']>(undefined);
   
   // Rate limiting state
   const [sentTimestamps, setSentTimestamps] = useState<number[]>([]);
@@ -52,6 +56,7 @@ export function WorkspaceChat({ ydoc, deviceId }: WorkspaceChatProps) {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const yTypingRef = useRef<Y.Map<number> | null>(null);
 
@@ -106,7 +111,7 @@ export function WorkspaceChat({ ydoc, deviceId }: WorkspaceChatProps) {
   // ── Send ────────────────────────────────────────────────────────────────────
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || rateLimited) return;
+    if ((!input.trim() && !attachment) || rateLimited) return;
 
     // Rate limiting: max 5 messages per 10 seconds
     const now = Date.now();
@@ -125,13 +130,57 @@ export function WorkspaceChat({ ydoc, deviceId }: WorkspaceChatProps) {
       content: input.trim(),
       authorId: deviceId,
       timestamp: Date.now(),
+      attachment: attachment,
       ...(replyTo ? { replyToId: replyTo.id } : {})
     }]);
 
     setInput('');
+    setAttachment(undefined);
     setReplyTo(null);
     yTypingRef.current?.delete(deviceId);
     inputRef.current?.focus();
+  };
+
+  // ── Attach Image ────────────────────────────────────────────────────────────
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_DIM = 800;
+        let width = img.width;
+        let height = img.height;
+        
+        if (width > height && width > MAX_DIM) {
+          height *= MAX_DIM / width;
+          width = MAX_DIM;
+        } else if (height > MAX_DIM) {
+          width *= MAX_DIM / height;
+          height = MAX_DIM;
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+        setAttachment({
+          type: 'image',
+          data: dataUrl,
+          name: file.name,
+          width,
+          height
+        });
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   // ── Edit ────────────────────────────────────────────────────────────────────
@@ -204,7 +253,7 @@ export function WorkspaceChat({ ydoc, deviceId }: WorkspaceChatProps) {
   }
 
   return (
-    <div style={{ width: '320px', borderLeft: '1px solid var(--border-subtle)', backgroundColor: 'var(--bg-panel)', display: 'flex', flexDirection: 'column', height: '100%', boxSizing: 'border-box', position: 'relative' }}>
+    <div className="workspace-chat" style={{ width: '320px', borderLeft: '1px solid var(--border-subtle)', backgroundColor: 'var(--bg-panel)', display: 'flex', flexDirection: 'column', height: '100%', boxSizing: 'border-box', position: 'relative' }}>
       
       {/* Header */}
       <div style={{ padding: '0.875rem 1rem', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: '0.6rem', backgroundColor: 'var(--bg-sidebar)', flexShrink: 0 }}>
@@ -331,9 +380,21 @@ export function WorkspaceChat({ ydoc, deviceId }: WorkspaceChatProps) {
                       boxShadow: isMe && !isDeleted ? '0 2px 8px rgba(99,102,241,0.25)' : 'none',
                       fontStyle: isDeleted ? 'italic' : 'normal',
                       wordBreak: 'break-word',
+                      overflowX: 'auto',
                     }}
                   >
-                    {isDeleted ? '🚫 Message deleted' : msg.content}
+                    {isDeleted ? '🚫 Message deleted' : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        {msg.attachment && msg.attachment.type === 'image' && (
+                          <img 
+                            src={msg.attachment.data} 
+                            alt={msg.attachment.name} 
+                            style={{ maxWidth: '100%', borderRadius: '8px', border: '1px solid rgba(0,0,0,0.1)' }} 
+                          />
+                        )}
+                        {msg.content && <MarkdownMessage content={msg.content} />}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -425,9 +486,27 @@ export function WorkspaceChat({ ydoc, deviceId }: WorkspaceChatProps) {
           <Reply size={13} color="var(--accent-primary)" style={{ flexShrink: 0 }} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{ margin: 0, fontSize: '0.65rem', color: 'var(--accent-primary)', fontWeight: 600 }}>Replying to {replyTo.authorId === deviceId ? 'yourself' : replyTo.authorId.split('-')[0]}</p>
-            <p style={{ margin: 0, fontSize: '0.72rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{replyTo.content}</p>
+            <p style={{ margin: 0, fontSize: '0.72rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{replyTo.content || (replyTo.attachment ? `[Image ${replyTo.attachment.name}]` : '')}</p>
           </div>
           <button onClick={() => setReplyTo(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', display: 'flex', color: 'var(--text-muted)' }}><X size={14} /></button>
+        </div>
+      )}
+
+      {/* Attachment Preview */}
+      {attachment && (
+        <div style={{ padding: '0.5rem 0.75rem', background: 'var(--bg-panel)', borderTop: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div style={{ width: '40px', height: '40px', borderRadius: '6px', overflow: 'hidden', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            {attachment.type === 'image' ? (
+              <img src={attachment.data} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              <ImageIcon size={16} color="var(--text-muted)" />
+            )}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-primary)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{attachment.name}</p>
+            <p style={{ margin: 0, fontSize: '0.65rem', color: 'var(--text-muted)' }}>Image attached</p>
+          </div>
+          <button onClick={() => setAttachment(undefined)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', display: 'flex', color: 'var(--text-muted)', borderRadius: '4px' }} onMouseOver={e => e.currentTarget.style.background='var(--border-subtle)'} onMouseOut={e => e.currentTarget.style.background='none'}><X size={14} /></button>
         </div>
       )}
 
@@ -438,6 +517,21 @@ export function WorkspaceChat({ ydoc, deviceId }: WorkspaceChatProps) {
             Sending too fast! Please wait.
           </div>
         )}
+        <input 
+          type="file" 
+          accept="image/*" 
+          ref={fileInputRef} 
+          onChange={handleFileSelect} 
+          style={{ display: 'none' }} 
+        />
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '4px', display: 'flex', flexShrink: 0, borderRadius: '6px' }}
+          title="Attach image"
+        >
+          <Paperclip size={18} />
+        </button>
         <button
           type="button"
           onClick={e => { e.stopPropagation(); if (messages.length > 0) setShowEmojiFor(showEmojiFor ? null : 'quick'); }}
@@ -460,8 +554,8 @@ export function WorkspaceChat({ ydoc, deviceId }: WorkspaceChatProps) {
         />
         <button
           type="submit"
-          disabled={!input.trim()}
-          style={{ width: '36px', height: '36px', borderRadius: '50%', background: input.trim() ? 'var(--accent-primary)' : 'var(--border-subtle)', color: '#fff', border: 'none', cursor: input.trim() ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: input.trim() ? '0 2px 8px rgba(99,102,241,0.35)' : 'none', transition: 'all 0.2s' }}
+          disabled={!input.trim() && !attachment}
+          style={{ width: '36px', height: '36px', borderRadius: '50%', background: (input.trim() || attachment) ? 'var(--accent-primary)' : 'var(--border-subtle)', color: '#fff', border: 'none', cursor: (input.trim() || attachment) ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: (input.trim() || attachment) ? '0 2px 8px rgba(99,102,241,0.35)' : 'none', transition: 'all 0.2s' }}
         >
           <Send size={15} style={{ marginLeft: '1px' }} />
         </button>
@@ -491,5 +585,39 @@ function CtxItem({ icon, label, onClick, danger }: { icon: React.ReactNode; labe
     >
       {icon} {label}
     </button>
+  );
+}
+
+// ── Markdown renderer ────────────────────────────────────────────────────────
+function MarkdownMessage({ content }: { content: string }) {
+  return (
+    <div className="markdown-chat">
+      <ReactMarkdown
+        components={{
+          code({ node, inline, className, children, ...props }: any) {
+            const match = /language-(\w+)/.exec(className || '');
+            return !inline && match ? (
+              <SyntaxHighlighter
+                {...props}
+                style={vscDarkPlus}
+                language={match[1]}
+                PreTag="div"
+                customStyle={{ borderRadius: '6px', margin: '4px 0', padding: '8px', fontSize: '0.75rem' }}
+              >
+                {String(children).replace(/\n$/, '')}
+              </SyntaxHighlighter>
+            ) : (
+              <code {...props} className={className} style={{ background: 'rgba(0,0,0,0.1)', padding: '2px 4px', borderRadius: '4px', fontFamily: 'var(--mono)', fontSize: '0.85em' }}>
+                {children}
+              </code>
+            );
+          },
+          p: ({ children }) => <p style={{ margin: 0, padding: 0 }}>{children}</p>,
+          a: ({ children, href }) => <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>{children}</a>
+        }}
+      >
+        {content}
+      </ReactMarkdown>
+    </div>
   );
 }

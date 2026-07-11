@@ -59,4 +59,11 @@ export interface ChatMessage {
   deletedAt?: number;
   replyToId?: string;
   reactions?: Record<string, string[]>; // emoji -> [authorId, ...]
+  attachment?: {
+    type: 'image';
+    data: string; // base64 data URI
+    name: string;
+    width: number;
+    height: number;
+  };
 }
