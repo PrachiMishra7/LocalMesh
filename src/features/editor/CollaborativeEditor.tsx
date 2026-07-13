@@ -2,7 +2,6 @@ import { useEffect, useState, useRef } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Collaboration from '@tiptap/extension-collaboration';
-import CollaborationCursor from '@tiptap/extension-collaboration-cursor';
 import * as Y from 'yjs';
 import { IndexeddbPersistence } from 'y-indexeddb';
 import { Loader2, Eye, Download } from 'lucide-react';
@@ -25,8 +24,8 @@ interface CollaborativeEditorProps {
 
 export function CollaborativeEditor({ documentId, workspaceId, deviceId, activeWorkspaceKey, myRole, onPeersChange, onAwarenessReady, onYdocReady }: CollaborativeEditorProps) {
   const [isLoaded, setIsLoaded] = useState(false);
+  const [ydoc, setYdoc] = useState<Y.Doc>(() => new Y.Doc());
   const providerRef = useRef<IndexeddbPersistence | null>(null);
-  const ydocRef = useRef<Y.Doc>(new Y.Doc());
   const peerManagerRef = useRef<PeerManager | null>(null);
 
   const isReadOnly = myRole === 'viewer';
@@ -36,23 +35,24 @@ export function CollaborativeEditor({ documentId, workspaceId, deviceId, activeW
     setIsLoaded(false);
     onPeersChange(0);
     onYdocReady(null);
-    ydocRef.current = new Y.Doc();
+    const newYdoc = new Y.Doc();
+    setYdoc(newYdoc);
 
     const roomName = `localmesh-doc-${documentId}`;
-    const provider = new IndexeddbPersistence(roomName, ydocRef.current);
+    const provider = new IndexeddbPersistence(roomName, newYdoc);
     providerRef.current = provider;
 
     let unobserveMembers: (() => void) | null = null;
 
     provider.on('synced', () => {
       setIsLoaded(true);
-      onYdocReady(ydocRef.current);
+      onYdocReady(newYdoc);
 
       // Sync members roster
-      syncMembersToYjs(workspaceId, ydocRef.current).catch(() => {});
-      unobserveMembers = observeMembersFromYjs(workspaceId, ydocRef.current);
+      syncMembersToYjs(workspaceId, newYdoc).catch(() => {});
+      unobserveMembers = observeMembersFromYjs(workspaceId, newYdoc);
 
-      const pm = new PeerManager(deviceId, workspaceId, ydocRef.current, activeWorkspaceKey);
+      const pm = new PeerManager(deviceId, workspaceId, newYdoc, activeWorkspaceKey);
 
       pm.onPeerConnect = () => { onPeersChange(pm.getConnectedPeerCount()); };
       pm.onPeerDisconnect = () => { onPeersChange(pm.getConnectedPeerCount()); };
@@ -70,8 +70,9 @@ export function CollaborativeEditor({ documentId, workspaceId, deviceId, activeW
     return () => {
       unobserveMembers?.();
       peerManagerRef.current?.destroy();
+      peerManagerRef.current = null;
       provider.destroy();
-      ydocRef.current.destroy();
+      newYdoc.destroy();
       onPeersChange(0);
       onAwarenessReady(null);
       onYdocReady(null);
@@ -88,22 +89,11 @@ export function CollaborativeEditor({ documentId, workspaceId, deviceId, activeW
   const editor = useEditor({
     extensions: [
       StarterKit.configure({ history: false } as any),
-      Collaboration.configure({ document: ydocRef.current }),
-      ...(peerManagerRef.current ? [CollaborationCursor.configure({ 
-        provider: { 
-          awareness: peerManagerRef.current.awareness,
-          on: () => {},
-          off: () => {},
-          connect: () => {},
-          disconnect: () => {},
-          destroy: () => {}
-        } as any, 
-        user: { name: deviceId.split('-')[0], color: cursorColor } 
-      })] : []),
+      Collaboration.configure({ document: ydoc }),
     ],
     content: '',
     editable: !isReadOnly,
-  }, [documentId, isLoaded]);
+  }, [documentId, ydoc]);
 
   if (!isLoaded) {
     return (
@@ -180,7 +170,7 @@ export function CollaborativeEditor({ documentId, workspaceId, deviceId, activeW
         </div>
       </div>
 
-      <WorkspaceChat ydoc={ydocRef.current} deviceId={deviceId} />
+      <WorkspaceChat ydoc={ydoc} deviceId={deviceId} />
 
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
