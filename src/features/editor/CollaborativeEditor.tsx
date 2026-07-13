@@ -90,7 +90,14 @@ export function CollaborativeEditor({ documentId, workspaceId, deviceId, activeW
       StarterKit.configure({ history: false } as any),
       Collaboration.configure({ document: ydocRef.current }),
       ...(peerManagerRef.current ? [CollaborationCursor.configure({ 
-        provider: { awareness: peerManagerRef.current.awareness } as any, 
+        provider: { 
+          awareness: peerManagerRef.current.awareness,
+          on: () => {},
+          off: () => {},
+          connect: () => {},
+          disconnect: () => {},
+          destroy: () => {}
+        } as any, 
         user: { name: deviceId.split('-')[0], color: cursorColor } 
       })] : []),
     ],
