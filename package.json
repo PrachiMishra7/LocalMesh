@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
+    "start": "npm run build && node signalling-server/index.js",
     "signal": "node signalling-server/index.js"
   },
   "dependencies": {

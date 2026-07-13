@@ -1,6 +1,22 @@
+const express = require('express');
+const http = require('http');
+const path = require('path');
 const { WebSocketServer } = require('ws');
 
-const wss = new WebSocketServer({ port: 8080 });
+const app = express();
+const server = http.createServer(app);
+
+// Serve the static frontend files from the Vite build directory
+const frontendPath = path.join(__dirname, '../dist');
+app.use(express.static(frontendPath));
+
+// Fallback to index.html for React Router / SPA navigation
+app.get('*', (req, res) => {
+  res.sendFile(path.join(frontendPath, 'index.html'));
+});
+
+// Attach WebSocketServer to the same HTTP server
+const wss = new WebSocketServer({ server });
 
 // Map of workspaceId -> Set of WebSocket clients
 const workspaces = new Map();
@@ -58,4 +74,8 @@ wss.on('connection', (ws) => {
   });
 });
 
-console.log('WebSocket Signalling Server running on ws://localhost:8080');
+const PORT = process.env.PORT || 8080;
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  console.log(`Frontend served from ${frontendPath}`);
+});

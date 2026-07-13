@@ -15,9 +15,11 @@ export class SignallingChannel {
   constructor(deviceId: string) {
     this.localDeviceId = deviceId;
     
-    // Connect to the local Node.js signalling server
-    // (In production, this would be wss://your-domain.com/signal)
-    this.ws = new WebSocket('ws://localhost:8080');
+    // Dynamically connect to the same host serving the frontend
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    // Use localhost:8080 for Vite dev server, otherwise use the actual host
+    const host = window.location.port === '5173' ? 'localhost:8080' : window.location.host;
+    this.ws = new WebSocket(`${protocol}//${host}`);
 
     this.ws.onopen = () => {
       console.log('Connected to Signalling Server.');
